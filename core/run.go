@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -45,16 +46,6 @@ func loadVaults(filePath string) ([]*Vault, error) {
 	return cfg, nil
 }
 
-func getVault(chain string, vaults []*Vault) *Vault {
-	for _, vault := range vaults {
-		if vault.Chain == chain {
-			return vault
-		}
-	}
-
-	return nil
-}
-
 func getEcdsaPubkey(sisuRpc string) ethcommon.Address {
 	grpcConn, err := grpc.Dial(
 		sisuRpc,
@@ -88,7 +79,7 @@ func readMnemonic() string {
 		panic(err)
 	}
 
-	return text
+	return strings.Trim(text, " \n")
 }
 
 func Run() {
@@ -101,7 +92,6 @@ func Run() {
 			sisuAccount := getEcdsaPubkey(sisuRpc)
 			watcher := eth.NewWatcher(mnemonic, chain, chainCfg.Rpcs, sisuAccount.String())
 			watcher.Start()
-			break
 		}
 	}
 }

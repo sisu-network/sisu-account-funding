@@ -17,6 +17,7 @@ var (
 )
 
 type watcher struct {
+	mnemonic  string
 	chain     string
 	urls      []string
 	clients   []*ethclient.Client
@@ -26,6 +27,7 @@ type watcher struct {
 
 func NewWatcher(mnemonic string, chain string, urls []string, watchAddr string) *watcher {
 	return &watcher{
+		mnemonic:  mnemonic,
 		chain:     chain,
 		urls:      urls,
 		clients:   make([]*ethclient.Client, len(urls)),
@@ -61,6 +63,7 @@ func (w *watcher) init() {
 
 func (w *watcher) loop() {
 	threshold := new(big.Int).Div(ONE_ETHER_IN_WEI, big.NewInt(10))
+	fundingAmount := new(big.Int).Div(ONE_ETHER_IN_WEI, big.NewInt(10))
 
 	for {
 		if w.stop.Load() {
@@ -76,7 +79,17 @@ func (w *watcher) loop() {
 			}
 
 			amountFloat := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(ONE_ETHER_IN_WEI))
-			log.Info("Amount in ETH: ", amountFloat, " on chain ", w.chain)
+			log.Verbose("Amount in ETH: ", amountFloat, " on chain ", w.chain)
+
+			if balance.Cmp(threshold) < 0 {
+				log.Infof("Funding chain %s", w.chain)
+				// Balance is less than the threshold. Let's top up the account.
+				err := TransferEth(client, w.mnemonic, w.chain, w.watchAddr, fundingAmount)
+				if err != nil {
+					log.Errorf("Failed to transfer eth on chain %s, err  = %s", w.chain, err.Error())
+				}
+			}
+
 			break
 		}
 
