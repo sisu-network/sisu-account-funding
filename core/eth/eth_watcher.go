@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	SleepTime        = time.Second * 30
+	SleepTime        = time.Second * 60 * 30
 	ONE_ETHER_IN_WEI = big.NewInt(1000000000000000000)
 )
 
