@@ -15,13 +15,13 @@ import (
 	"github.com/sisu-network/lib/log"
 )
 
-func getSigner(client *ethclient.Client) ethtypes.Signer {
+func getSigner(client *ethclient.Client) (ethtypes.Signer, error) {
 	chainId, err := client.ChainID(context.Background())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return ethtypes.NewLondonSigner(chainId)
+	return ethtypes.NewLondonSigner(chainId), nil
 }
 
 // TransferEth transfers a specific ETH amount to an address.
@@ -51,8 +51,13 @@ func TransferEth(client *ethclient.Client, mnemonic, chain string, recipient com
 	var data []byte
 	tx := ethtypes.NewTransaction(nonce, recipient, amount, gasLimit, gasPrice, data)
 
+	signer, err := getSigner(client)
+	if err != nil {
+		log.Errorf("Failed to get signer for chain %s", chain)
+		return err
+	}
 	privateKey, _ := getPrivateKey(mnemonic)
-	signedTx, err := ethtypes.SignTx(tx, getSigner(client), privateKey)
+	signedTx, err := ethtypes.SignTx(tx, signer, privateKey)
 
 	log.Info("Tx hash = ", signedTx.Hash(), " on chain ", chain)
 
