@@ -1,19 +1,20 @@
 package core
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
+	"syscall"
 
 	"github.com/BurntSushi/toml"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	libchain "github.com/sisu-network/lib/chain"
 	"github.com/sisu-network/sisu-account-funding/core/eth"
+	"github.com/sisu-network/sisu-account-funding/core/lisk"
 	"github.com/sisu-network/sisu-account-funding/core/types"
+	"golang.org/x/term"
 	"google.golang.org/grpc"
 )
 
@@ -46,7 +47,7 @@ func loadVaults(filePath string) ([]*Vault, error) {
 	return cfg, nil
 }
 
-func getEcdsaPubkey(sisuRpc string) ethcommon.Address {
+func getPubkeys(sisuRpc string) map[string][]byte {
 	grpcConn, err := grpc.Dial(
 		sisuRpc,
 		grpc.WithInsecure(),
@@ -63,23 +64,28 @@ func getEcdsaPubkey(sisuRpc string) ethcommon.Address {
 		panic(err)
 	}
 
-	pubKeyBytes := res.Pubkeys[libchain.KEY_TYPE_ECDSA]
+	return res.Pubkeys
+}
+
+func getEthAccount(pubkeys map[string][]byte) ethcommon.Address {
+	pubKeyBytes := pubkeys[libchain.KEY_TYPE_ECDSA]
 	pubKey, err := ethcrypto.UnmarshalPubkey(pubKeyBytes)
 	if err != nil {
 		panic(err)
 	}
+
 	return ethcrypto.PubkeyToAddress(*pubKey)
 }
 
 func readMnemonic() string {
 	fmt.Print("Enter mnemonic: ")
-	reader := bufio.NewReader(os.Stdin)
-	text, err := reader.ReadString('\n')
+
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		panic(err)
 	}
 
-	return strings.Trim(text, " \n")
+	return string(bytePassword)
 }
 
 func Run() {
@@ -87,10 +93,17 @@ func Run() {
 	cfg := loadChainConfig("chains.toml")
 	sisuRpc := "0.0.0.0:9090"
 
+	pubkeys := getPubkeys(sisuRpc)
+
 	for chain, chainCfg := range cfg.Chains {
 		if libchain.IsETHBasedChain(chain) {
-			sisuAccount := getEcdsaPubkey(sisuRpc)
+			sisuAccount := getEthAccount(pubkeys)
 			watcher := eth.NewWatcher(mnemonic, chain, chainCfg.Rpcs, sisuAccount.String())
+			watcher.Start()
+		}
+
+		if libchain.IsLiskChain(chain) {
+			watcher := lisk.NewWatcher(mnemonic, chain, chainCfg.Rpcs[0], pubkeys[libchain.KEY_TYPE_EDDSA])
 			watcher.Start()
 		}
 	}
