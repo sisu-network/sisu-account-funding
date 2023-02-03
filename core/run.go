@@ -91,19 +91,23 @@ func readMnemonic() string {
 func Run() {
 	mnemonic := readMnemonic()
 	cfg := loadChainConfig("chains.toml")
-	sisuRpc := "0.0.0.0:9090"
-
-	pubkeys := getPubkeys(sisuRpc)
+	pubkeys := getPubkeys("0.0.0.0:9090")
 
 	for chain, chainCfg := range cfg.Chains {
 		if libchain.IsETHBasedChain(chain) {
+			// 04cbf8c5562928f81495a55c12f89836cf744c1adcc43c45c33e97571603b979bcead13fb7f33e7cc01d2a632337725b84942d3998c933b08e5a34be8df7794e05
+			// is the test ecdsa pubkey. Use hex.DecodeString to get its bytes
 			sisuAccount := getEthAccount(pubkeys)
 			watcher := eth.NewWatcher(mnemonic, chain, chainCfg.Rpcs, sisuAccount.String())
 			watcher.Start()
 		}
 
+		// Use 7cbb424e0dffad3104e29c6febe3abd899b2d2b972475dabd9fbe6b62f9af2ff as hex of sample test
+		// eddsa pubkey. Use hex.DecodeString to get its bytes
 		if libchain.IsLiskChain(chain) {
-			watcher := lisk.NewWatcher(mnemonic, chain, chainCfg.Rpcs[0], pubkeys[libchain.KEY_TYPE_EDDSA])
+			// edPubkey, _ := hex.DecodeString("7cbb424e0dffad3104e29c6febe3abd899b2d2b972475dabd9fbe6b62f9af2ff")
+			edPubkey := pubkeys[libchain.KEY_TYPE_EDDSA]
+			watcher := lisk.NewWatcher(mnemonic, chain, chainCfg.Rpcs[0], edPubkey)
 			watcher.Start()
 		}
 	}

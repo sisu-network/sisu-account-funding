@@ -76,15 +76,21 @@ func (w *watcher) loop() {
 		} else {
 			res := &GetAccountsResponse{}
 			err = json.Unmarshal(bz, res)
-			if err != nil {
+			switch {
+			case err != nil:
 				log.Errorf("Failed to get unmarshal get accounts response, err = ", err)
-			} else {
-				if len(res.Data) > 0 {
-					balance, ok := new(big.Int).SetString(res.Data[0].Summary.Balance, 10)
-					if ok {
-						if balance.Cmp(FundThreshold) < 0 {
-							w.fundSisu(w.mnemonic, w.pubkey, FundAmount, "")
-						}
+
+			case res.Error:
+				if res.Message == "Data not found" {
+					log.Info("Funding a small amount for the account to be created.")
+					w.fundSisu(w.mnemonic, w.pubkey, 10_000_000, "")
+				}
+
+			case len(res.Data) > 0:
+				balance, ok := new(big.Int).SetString(res.Data[0].Summary.Balance, 10)
+				if ok {
+					if balance.Cmp(FundThreshold) < 0 {
+						w.fundSisu(w.mnemonic, w.pubkey, FundAmount, "")
 					}
 				}
 			}

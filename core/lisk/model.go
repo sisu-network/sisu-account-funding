@@ -1,7 +1,9 @@
 package lisk
 
 type GetAccountsResponse struct {
-	Data []GetAccountsData `json:"data,omitempty"`
+	Error   bool              `json:"error,omitempty"`
+	Message string            `json:"message,omitempty"`
+	Data    []GetAccountsData `json:"data,omitempty"`
 }
 
 type GetAccountsData struct {
