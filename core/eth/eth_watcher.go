@@ -63,7 +63,7 @@ func (w *watcher) init() {
 
 func (w *watcher) loop() {
 	threshold := new(big.Int).Div(ONE_ETHER_IN_WEI, big.NewInt(10))
-	fundingAmount := new(big.Int).Div(ONE_ETHER_IN_WEI, big.NewInt(10))
+	fundingAmount := big.NewInt(30_000_000_000_000_000) // 0.03 ETH
 
 	for {
 		if w.stop.Load() {
